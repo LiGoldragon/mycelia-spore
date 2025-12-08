@@ -6,9 +6,9 @@ mod cloudflare;
 use cloudflare::CloudflarePages;
 
 impl Hosting {
-    pub fn apply(&self, config: &SporeConfig) -> Result<()> {
+    pub async fn apply(&self, config: &SporeConfig) -> Result<()> {
         match self.provider {
-            HostingProvider::CloudflarePages => CloudflarePages::apply(config),
+            HostingProvider::CloudflarePages => CloudflarePages::apply(config).await,
             HostingProvider::LocalStatic => {
                 // placeholder for future local static hosting
                 Ok(())

@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::env;
-use std::process::Command;
+use tokio::process::Command;
 
 use crate::model::{BuildType, CfFramework, SporeConfig};
 
@@ -11,12 +11,12 @@ pub struct CloudflarePages<'a> {
 }
 
 impl<'a> CloudflarePages<'a> {
-    pub fn apply(config: &'a SporeConfig) -> Result<()> {
+    pub async fn apply(config: &'a SporeConfig) -> Result<()> {
         let pages = CloudflarePages { config };
         pages.require_env("CLOUDFLARE_API_TOKEN")?;
         pages.require_env("CLOUDFLARE_ACCOUNT_ID")?;
-        pages.ensure_project()?;
-        pages.ensure_domains()?;
+        pages.ensure_project().await?;
+        pages.ensure_domains().await?;
         Ok(())
     }
 
@@ -24,10 +24,11 @@ impl<'a> CloudflarePages<'a> {
         env::var(key).with_context(|| format!("{key} must be set"))
     }
 
-    fn project_exists(&self, project_name: &str) -> Result<bool> {
+    async fn project_exists(&self, project_name: &str) -> Result<bool> {
         let output = Command::new("wrangler")
             .args(["pages", "project", "list", "--format", "json"])
             .output()
+            .await
             .context("failed to run wrangler pages project list")?;
 
         if !output.status.success() {
@@ -92,14 +93,14 @@ impl<'a> CloudflarePages<'a> {
         }
     }
 
-    fn ensure_project(&self) -> Result<()> {
+    async fn ensure_project(&self) -> Result<()> {
         let project_name = self.project_name();
         let prod_branch = self.production_branch();
 
         let (build_cmd, build_output) = self.build_params();
         let framework = self.cf_framework();
 
-        let exists = self.project_exists(&project_name)?;
+        let exists = self.project_exists(&project_name).await?;
         let mut args: Vec<String> = vec![
             "pages".into(),
             "project".into(),
@@ -138,6 +139,7 @@ impl<'a> CloudflarePages<'a> {
         let status = Command::new("wrangler")
             .args(&args)
             .status()
+            .await
             .context("failed to run wrangler pages project create/update")?;
 
         if !status.success() {
@@ -150,12 +152,13 @@ impl<'a> CloudflarePages<'a> {
         Ok(())
     }
 
-    fn ensure_domains(&self) -> Result<()> {
+    async fn ensure_domains(&self) -> Result<()> {
         let project_name = self.project_name();
 
         let output = Command::new("wrangler")
             .args(["pages", "domain", "list", &project_name, "--format", "json"])
             .output()
+            .await
             .context("failed to run wrangler pages domain list")?;
 
         if !output.status.success() {
@@ -193,6 +196,7 @@ impl<'a> CloudflarePages<'a> {
             let status = Command::new("wrangler")
                 .args(["pages", "domain", "add", &project_name, &d])
                 .status()
+                .await
                 .context("failed to run wrangler pages domain add")?;
 
             if !status.success() {
