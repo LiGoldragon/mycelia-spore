@@ -1,103 +1,176 @@
-@0xbad0bad0bad0bad0;  # Replace with a unique ID.
+@0x9c1f8d7e6b5a4a3b;
 
 using Rust = import "rust.capnp";
 
 $Rust.module("spore_capnp");
+# Generated Rust code will live under the `spore_capnp` module.
 
-enum SiteKind {
-  treelink @0;
-  blog     @1;
-  store    @2;
-  docs     @3;
+###############################################################################
+# CORE CONCEPTS
+###############################################################################
+
+enum SiteIntent {
+  identityIndex @0;
+  # A lightweight identity or index site whose primary purpose
+  # is to reference other resources.
+
+  publication @1;
+  # A site whose primary purpose is publishing authored content.
+
+  commerce @2;
+  # A site whose primary purpose is offering goods or services.
+
+  documentation @3;
+  # A site whose primary purpose is reference or technical material.
 }
 
-enum HostingProvider {
-  cloudflarePages @0;
-  localStatic     @1;
-  s3Static        @2;
-  criomosHost     @3;
+###############################################################################
+# AUTHORITY AND ROLE
+###############################################################################
+
+enum HostingAuthorityRole {
+  designatedOrigin @0;
+  # This site is served by a node explicitly designated as an
+  # authoritative origin within the Criome.
+
+  delegatedOrigin @1;
+  # This site is served by an external authority delegated
+  # responsibility by the Criome.
+
+  federatedOrigin @2;
+  # This site is served through a federation of cooperating nodes,
+  # none of which are singularly authoritative.
+
+  externallyManagedOrigin @3;
+  # This site is served by an external system that is not governed
+  # by Criome authority but is bound by contract or interface.
 }
 
-enum RepoProvider {
-  github @0;
-  gitlab @1;
-  none   @2;
+###############################################################################
+# ARTIFACT DESCRIPTION
+###############################################################################
+
+enum DeploymentArtifactKind {
+  staticContent @0;
+  # A static, immutable artifact intended to be served as-is.
+
+  versionedStaticContent @1;
+  # A static artifact with explicit versioning semantics.
+
+  compositeStaticContent @2;
+  # A static artifact composed of multiple independently generated
+  # components assembled into a single deployment unit.
 }
 
-enum BuildType {
-  staticPrebuilt @0;
-  hugoNix        @1;
-  nextStatic     @2;
-  astroStatic    @3;
+###############################################################################
+# SITE IDENTITY
+###############################################################################
+
+struct SiteIdentity {
+  canonicalId @0 :Text;
+  # Stable internal identifier for the site.
+  # Must remain invariant across redeployments.
+
+  humanReadableName @1 :Text;
+  # Descriptive name intended for human reference.
+
+  intent @2 :SiteIntent;
+  # Declared purpose of the site.
 }
 
-enum CfFramework {
-  none  @0;
-  hugo  @1;
-  next  @2;
-  astro @3;
-  nuxt  @4;
+###############################################################################
+# ARTIFACT CONTRACT
+###############################################################################
+
+struct DeploymentArtifact {
+  kind @0 :DeploymentArtifactKind;
+  # Declares the contractual nature of the artifact.
+
+  outputPath @1 :Text;
+  # Filesystem-relative path containing the deployable artifact.
+  # Interpretation is backend-specific but semantically stable.
 }
 
-struct Site {
-  id    @0 :Text;
-  title @1 :Text;
-  kind  @2 :SiteKind;
+###############################################################################
+# NAMING AND ADDRESSING
+###############################################################################
+
+struct DomainAssignment {
+  canonicalDomain @0 :Text;
+  # Primary domain name representing the site’s canonical address.
+
+  alternateDomains @1 :List(Text);
+  # Additional domain names bound to the same site identity.
 }
 
-struct Repo {
-  provider      @0 :RepoProvider;
-  slug          @1 :Text;
-  defaultBranch @2 :Text;
+###############################################################################
+# HOSTING DESIGNATION
+###############################################################################
+
+struct HostingDesignation {
+  authorityRole @0 :HostingAuthorityRole;
+  # Declares the role of the hosting authority within the Criome.
+
+  externalBindingReference @1 :Text;
+  # Optional opaque identifier used to bind this designation
+  # to an external system when applicable.
 }
 
-struct Build {
-  type       @0 :BuildType;
-  outputDir  @1 :Text;
-  framework  @2 :CfFramework;
+###############################################################################
+# NAME RESOLUTION (TRANSITIONAL INTERFACE)
+###############################################################################
+
+struct NameResolutionRecord {
+  recordName @0 :Text;
+  # Name of the record (e.g. root, subdomain).
+
+  recordType @1 :Text;
+  # Record type (A, AAAA, CNAME, TXT, etc.).
+
+  recordValue @2 :Text;
+  # Value associated with the record.
+
+  timeToLiveSeconds @3 :UInt32;
+  # DNS cache lifetime in seconds.
 }
 
-struct Domains {
-  primary @0 :Text;
-  aliases @1 :List(Text);
+struct NameResolutionConfiguration {
+  records @0 :List(NameResolutionRecord);
+  # Complete set of name-resolution records to apply.
 }
 
-struct Hosting {
-  provider         @0 :HostingProvider;
-  projectName      @1 :Text;
-  productionBranch @2 :Text;
+###############################################################################
+# ECONOMIC ACTIONS (OPTIONAL)
+###############################################################################
+
+struct DomainAcquisitionInstruction {
+  registrarIdentifier @0 :Text;
+  # Identifier for the external registrar or acquisition mechanism.
+
+  domainName @1 :Text;
+  # Fully qualified domain name to be acquired.
 }
 
-struct DnsRecord {
-  name  @0 :Text;
-  type  @1 :Text;
-  value @2 :Text;
-  ttl   @3 :UInt32;
-}
+###############################################################################
+# ROOT CONFIGURATION
+###############################################################################
 
-struct DnsConfig {
-  provider @0 :HostingProvider;
-  zoneId   @1 :Text;
-  records  @2 :List(DnsRecord);
-}
+struct SporeConfiguration {
+  siteIdentity @0 :SiteIdentity;
+  # Identity and declared intent of the site.
 
-struct PurchaseConfig {
-  enum Registrar {
-    namecheap     @0;
-    gandi         @1;
-    cloudflareReg @2;
-  }
+  deploymentArtifact @1 :DeploymentArtifact;
+  # Description of the artifact being deployed.
 
-  provider @0 :Registrar;
-  domain   @1 :Text;
-}
+  domainAssignment @2 :DomainAssignment;
+  # Domain names bound to the site.
 
-struct SporeConfig {
-  site     @0 :Site;
-  repo     @1 :Repo;
-  build    @2 :Build;
-  domains  @3 :Domains;
-  hosting  @4 :Hosting;
-  dns      @5 :DnsConfig;
-  purchase @6 :PurchaseConfig;
+  hostingDesignation @3 :HostingDesignation;
+  # Authority and role governing hosting.
+
+  nameResolution @4 :NameResolutionConfiguration;
+  # Name resolution instructions (transitional interface).
+
+  domainAcquisition @5 :DomainAcquisitionInstruction;
+  # Optional instruction to acquire a domain prior to deployment.
 }
