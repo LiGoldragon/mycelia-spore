@@ -1,112 +1,76 @@
 #[derive(Debug, Clone, Copy)]
-pub enum SiteKind {
-    Treelink,
-    Blog,
-    Store,
-    Docs,
+pub enum SiteIntent {
+    IdentityIndex,
+    Publication,
+    Commerce,
+    Documentation,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum HostingProvider {
-    CloudflarePages,
-    LocalStatic,
-    S3Static,
-    CriomosHost,
+pub enum HostingAuthorityRole {
+    DesignatedOrigin,
+    DelegatedOrigin,
+    FederatedOrigin,
+    ExternallyManagedOrigin,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum RepoProvider {
-    Github,
-    Gitlab,
-    None,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum BuildType {
-    StaticPrebuilt,
-    HugoNix,
-    NextStatic,
-    AstroStatic,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum CfFramework {
-    None,
-    Hugo,
-    Next,
-    Astro,
-    Nuxt,
+pub enum DeploymentArtifactKind {
+    StaticContent,
+    VersionedStaticContent,
+    CompositeStaticContent,
 }
 
 #[derive(Debug, Clone)]
-pub struct Site {
-    pub id: String,
-    pub title: String,
-    pub kind: SiteKind,
+pub struct SiteIdentity {
+    pub canonical_id: String,
+    pub human_readable_name: String,
+    pub intent: SiteIntent,
 }
 
 #[derive(Debug, Clone)]
-pub struct Repo {
-    pub provider: RepoProvider,
-    pub slug: String,
-    pub default_branch: String,
+pub struct DeploymentArtifact {
+    pub kind: DeploymentArtifactKind,
+    pub output_path: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct Build {
-    pub build_type: BuildType,
-    pub output_dir: String,
-    pub framework: CfFramework,
+pub struct DomainAssignment {
+    pub canonical_domain: String,
+    pub alternate_domains: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Domains {
-    pub primary: String,
-    pub aliases: Vec<String>,
+pub struct HostingDesignation {
+    pub authority_role: HostingAuthorityRole,
+    pub external_binding_reference: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct Hosting {
-    pub provider: HostingProvider,
-    pub project_name: String,
-    pub production_branch: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct DnsRecord {
-    pub name: String,
+pub struct NameResolutionRecord {
+    pub record_name: String,
     pub record_type: String,
-    pub value: String,
-    pub ttl: u32,
+    pub record_value: String,
+    pub time_to_live_seconds: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct DnsConfig {
-    pub provider: HostingProvider,
-    pub zone_id: String,
-    pub records: Vec<DnsRecord>,
+pub struct NameResolutionConfiguration {
+    pub records: Vec<NameResolutionRecord>,
 }
 
 #[derive(Debug, Clone)]
-pub enum Registrar {
-    Namecheap,
-    Gandi,
-    CloudflareReg,
+pub struct DomainAcquisitionInstruction {
+    pub registrar_identifier: String,
+    pub domain_name: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct PurchaseConfig {
-    pub provider: Registrar,
-    pub domain: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct SporeConfig {
-    pub site: Site,
-    pub repo: Repo,
-    pub build: Build,
-    pub domains: Domains,
-    pub hosting: Hosting,
-    pub dns: Option<DnsConfig>,
-    pub purchase: Option<PurchaseConfig>,
+pub struct SporeConfiguration {
+    pub site_identity: SiteIdentity,
+    pub deployment_artifact: DeploymentArtifact,
+    pub domain_assignment: DomainAssignment,
+    pub hosting_designation: HostingDesignation,
+    pub name_resolution: NameResolutionConfiguration,
+    pub domain_acquisition: Option<DomainAcquisitionInstruction>,
 }

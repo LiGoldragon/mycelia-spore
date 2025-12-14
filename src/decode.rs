@@ -5,162 +5,114 @@ use capnp::message::ReaderOptions;
 use capnp::serialize_packed;
 
 use crate::model::*;
-use crate::spore_capnp::spore_config;
+use crate::spore_capnp::spore_configuration;
 
-impl SiteKind {
-    fn from_reader(kind: spore_capnp::site_kind::Reader) -> Result<Self> {
-        use spore_capnp::site_kind::Which;
-        match kind.which()? {
-            Which::Treelink(()) => Ok(SiteKind::Treelink),
-            Which::Blog(()) => Ok(SiteKind::Blog),
-            Which::Store(()) => Ok(SiteKind::Store),
-            Which::Docs(()) => Ok(SiteKind::Docs),
+impl SiteIntent {
+    fn from_reader(intent: crate::spore_capnp::site_intent::Reader) -> Result<Self> {
+        use crate::spore_capnp::site_intent::Which;
+        match intent.which()? {
+            Which::IdentityIndex(()) => Ok(SiteIntent::IdentityIndex),
+            Which::Publication(()) => Ok(SiteIntent::Publication),
+            Which::Commerce(()) => Ok(SiteIntent::Commerce),
+            Which::Documentation(()) => Ok(SiteIntent::Documentation),
         }
     }
 }
 
-impl HostingProvider {
-    fn from_reader(p: spore_capnp::hosting_provider::Reader) -> Result<Self> {
-        use spore_capnp::hosting_provider::Which;
-        Ok(match p.which()? {
-            Which::CloudflarePages(()) => HostingProvider::CloudflarePages,
-            Which::LocalStatic(()) => HostingProvider::LocalStatic,
-            Which::S3Static(()) => HostingProvider::S3Static,
-            Which::CriomosHost(()) => HostingProvider::CriomosHost,
+impl HostingAuthorityRole {
+    fn from_reader(role: crate::spore_capnp::hosting_authority_role::Reader) -> Result<Self> {
+        use crate::spore_capnp::hosting_authority_role::Which;
+        Ok(match role.which()? {
+            Which::DesignatedOrigin(()) => HostingAuthorityRole::DesignatedOrigin,
+            Which::DelegatedOrigin(()) => HostingAuthorityRole::DelegatedOrigin,
+            Which::FederatedOrigin(()) => HostingAuthorityRole::FederatedOrigin,
+            Which::ExternallyManagedOrigin(()) => HostingAuthorityRole::ExternallyManagedOrigin,
         })
     }
 }
 
-impl RepoProvider {
-    fn from_reader(p: spore_capnp::repo_provider::Reader) -> Result<Self> {
-        use spore_capnp::repo_provider::Which;
-        Ok(match p.which()? {
-            Which::Github(()) => RepoProvider::Github,
-            Which::Gitlab(()) => RepoProvider::Gitlab,
-            Which::None(()) => RepoProvider::None,
+impl DeploymentArtifactKind {
+    fn from_reader(kind: crate::spore_capnp::deployment_artifact_kind::Reader) -> Result<Self> {
+        use crate::spore_capnp::deployment_artifact_kind::Which;
+        Ok(match kind.which()? {
+            Which::StaticContent(()) => DeploymentArtifactKind::StaticContent,
+            Which::VersionedStaticContent(()) => DeploymentArtifactKind::VersionedStaticContent,
+            Which::CompositeStaticContent(()) => DeploymentArtifactKind::CompositeStaticContent,
         })
     }
 }
 
-impl BuildType {
-    fn from_reader(t: spore_capnp::build_type::Reader) -> Result<Self> {
-        use spore_capnp::build_type::Which;
-        Ok(match t.which()? {
-            Which::StaticPrebuilt(()) => BuildType::StaticPrebuilt,
-            Which::HugoNix(()) => BuildType::HugoNix,
-            Which::NextStatic(()) => BuildType::NextStatic,
-            Which::AstroStatic(()) => BuildType::AstroStatic,
-        })
-    }
-}
+impl SporeConfiguration {
+    pub fn from_reader(reader: spore_configuration::Reader) -> Result<Self> {
+        let site_identity_reader = reader.get_site_identity()?;
+        let deployment_artifact_reader = reader.get_deployment_artifact()?;
+        let domain_assignment_reader = reader.get_domain_assignment()?;
+        let hosting_designation_reader = reader.get_hosting_designation()?;
+        let name_resolution_reader = reader.get_name_resolution()?;
 
-impl CfFramework {
-    fn from_reader(f: spore_capnp::cf_framework::Reader) -> Result<Self> {
-        use spore_capnp::cf_framework::Which;
-        Ok(match f.which()? {
-            Which::None(()) => CfFramework::None,
-            Which::Hugo(()) => CfFramework::Hugo,
-            Which::Next(()) => CfFramework::Next,
-            Which::Astro(()) => CfFramework::Astro,
-            Which::Nuxt(()) => CfFramework::Nuxt,
-        })
-    }
-}
-
-impl Registrar {
-    fn from_reader(r: spore_capnp::purchase_config::registrar::Reader) -> Result<Self> {
-        use spore_capnp::purchase_config::registrar::Which;
-        Ok(match r.which()? {
-            Which::Namecheap(()) => Registrar::Namecheap,
-            Which::Gandi(()) => Registrar::Gandi,
-            Which::CloudflareReg(()) => Registrar::CloudflareReg,
-        })
-    }
-}
-
-impl SporeConfig {
-    pub fn from_reader(reader: spore_config::Reader) -> Result<Self> {
-        let site_reader = reader.get_site()?;
-        let repo_reader = reader.get_repo()?;
-        let build_reader = reader.get_build()?;
-        let domains_reader = reader.get_domains()?;
-        let hosting_reader = reader.get_hosting()?;
-
-        let site = Site {
-            id: site_reader.get_id()?.to_string(),
-            title: site_reader.get_title()?.to_string(),
-            kind: SiteKind::from_reader(site_reader.get_kind()?)?,
+        let site_identity = SiteIdentity {
+            canonical_id: site_identity_reader.get_canonical_id()?.to_string(),
+            human_readable_name: site_identity_reader.get_human_readable_name()?.to_string(),
+            intent: SiteIntent::from_reader(site_identity_reader.get_intent()?)?,
         };
 
-        let repo = Repo {
-            provider: RepoProvider::from_reader(repo_reader.get_provider()?)?,
-            slug: repo_reader.get_slug()?.to_string(),
-            default_branch: repo_reader.get_default_branch()?.to_string(),
+        let deployment_artifact = DeploymentArtifact {
+            kind: DeploymentArtifactKind::from_reader(deployment_artifact_reader.get_kind()?)?,
+            output_path: deployment_artifact_reader.get_output_path()?.to_string(),
         };
 
-        let build = Build {
-            build_type: BuildType::from_reader(build_reader.get_type()?)?,
-            output_dir: build_reader.get_output_dir()?.to_string(),
-            framework: CfFramework::from_reader(build_reader.get_framework()?)?,
-        };
-
-        let aliases_list = domains_reader.get_aliases()?;
-        let mut aliases = Vec::with_capacity(aliases_list.len() as usize);
-        for i in 0..aliases_list.len() {
-            aliases.push(aliases_list.get(i)?.to_string());
+        let alternate_domains_reader = domain_assignment_reader.get_alternate_domains()?;
+        let mut alternate_domains = Vec::with_capacity(alternate_domains_reader.len() as usize);
+        for i in 0..alternate_domains_reader.len() {
+            alternate_domains.push(alternate_domains_reader.get(i)?.to_string());
         }
 
-        let domains = Domains {
-            primary: domains_reader.get_primary()?.to_string(),
-            aliases,
+        let domain_assignment = DomainAssignment {
+            canonical_domain: domain_assignment_reader.get_canonical_domain()?.to_string(),
+            alternate_domains,
         };
 
-        let hosting = Hosting {
-            provider: HostingProvider::from_reader(hosting_reader.get_provider()?)?,
-            project_name: hosting_reader.get_project_name()?.to_string(),
-            production_branch: hosting_reader.get_production_branch()?.to_string(),
+        let hosting_designation = HostingDesignation {
+            authority_role: HostingAuthorityRole::from_reader(
+                hosting_designation_reader.get_authority_role()?,
+            )?,
+            external_binding_reference: hosting_designation_reader
+                .get_external_binding_reference()
+                .unwrap_or_default()
+                .to_string(),
         };
 
-        let dns = if reader.has_dns() {
-            let dns_reader = reader.get_dns()?;
-            let records_list = dns_reader.get_records()?;
-            let mut records = Vec::with_capacity(records_list.len() as usize);
-            for i in 0..records_list.len() {
-                let r = records_list.get(i)?;
-                records.push(DnsRecord {
-                    name: r.get_name()?.to_string(),
-                    record_type: r.get_type()?.to_string(),
-                    value: r.get_value()?.to_string(),
-                    ttl: r.get_ttl(),
-                });
-            }
-            Some(DnsConfig {
-                provider: HostingProvider::from_reader(dns_reader.get_provider()?)?,
-                zone_id: dns_reader.get_zone_id()?.to_string(),
-                records,
+        let records_reader = name_resolution_reader.get_records()?;
+        let mut records = Vec::with_capacity(records_reader.len() as usize);
+        for i in 0..records_reader.len() {
+            let r = records_reader.get(i)?;
+            records.push(NameResolutionRecord {
+                record_name: r.get_record_name()?.to_string(),
+                record_type: r.get_record_type()?.to_string(),
+                record_value: r.get_record_value()?.to_string(),
+                time_to_live_seconds: r.get_time_to_live_seconds(),
+            });
+        }
+
+        let name_resolution = NameResolutionConfiguration { records };
+
+        let domain_acquisition = if reader.has_domain_acquisition() {
+            let acquisition_reader = reader.get_domain_acquisition()?;
+            Some(DomainAcquisitionInstruction {
+                registrar_identifier: acquisition_reader.get_registrar_identifier()?.to_string(),
+                domain_name: acquisition_reader.get_domain_name()?.to_string(),
             })
         } else {
             None
         };
 
-        let purchase = if reader.has_purchase() {
-            let p = reader.get_purchase()?;
-            Some(PurchaseConfig {
-                provider: Registrar::from_reader(p.get_provider()?)?,
-                domain: p.get_domain()?.to_string(),
-            })
-        } else {
-            None
-        };
-
-        Ok(SporeConfig {
-            site,
-            repo,
-            build,
-            domains,
-            hosting,
-            dns,
-            purchase,
+        Ok(SporeConfiguration {
+            site_identity,
+            deployment_artifact,
+            domain_assignment,
+            hosting_designation,
+            name_resolution,
+            domain_acquisition,
         })
     }
 }
@@ -186,16 +138,16 @@ impl<R: io::Read> SporeStream<R> {
 }
 
 impl<R: io::Read> Iterator for SporeStream<R> {
-    type Item = Result<SporeConfig>;
+    type Item = Result<SporeConfiguration>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match serialize_packed::read_message(&mut self.reader, self.opts) {
             Ok(message) => {
-                let root: spore_config::Reader = match message.get_root() {
+                let root: spore_configuration::Reader = match message.get_root() {
                     Ok(r) => r,
                     Err(e) => return Some(Err(anyhow!("get_root failed: {e}"))),
                 };
-                Some(SporeConfig::from_reader(root))
+                Some(SporeConfiguration::from_reader(root))
             }
             Err(e) => {
                 if e.kind() == io::ErrorKind::UnexpectedEof {

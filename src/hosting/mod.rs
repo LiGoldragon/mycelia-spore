@@ -1,26 +1,30 @@
 use anyhow::Result;
 
-use crate::model::{Hosting, HostingProvider, SporeConfig};
+use crate::model::{HostingAuthorityRole, HostingDesignation, SporeConfiguration};
 
-mod cloudflare;
-use cloudflare::CloudflarePages;
+impl HostingDesignation {
+    pub async fn apply(&self, config: &SporeConfiguration) -> Result<()> {
+        let role = match self.authority_role {
+            HostingAuthorityRole::DesignatedOrigin => "designated-origin",
+            HostingAuthorityRole::DelegatedOrigin => "delegated-origin",
+            HostingAuthorityRole::FederatedOrigin => "federated-origin",
+            HostingAuthorityRole::ExternallyManagedOrigin => "externally-managed-origin",
+        };
 
-impl Hosting {
-    pub async fn apply(&self, config: &SporeConfig) -> Result<()> {
-        match self.provider {
-            HostingProvider::CloudflarePages => CloudflarePages::apply(config).await,
-            HostingProvider::LocalStatic => {
-                // placeholder for future local static hosting
-                Ok(())
-            }
-            HostingProvider::S3Static => {
-                // placeholder
-                Ok(())
-            }
-            HostingProvider::CriomosHost => {
-                // placeholder
-                Ok(())
-            }
+        println!(
+            "Applying hosting designation {role} for {} (artifact: {}, domains: {})",
+            config.site_identity.canonical_id,
+            config.deployment_artifact.output_path,
+            config.domain_assignment.canonical_domain
+        );
+
+        if let Some(acquisition) = &config.domain_acquisition {
+            println!(
+                "Domain acquisition requested via {} for {}",
+                acquisition.registrar_identifier, acquisition.domain_name
+            );
         }
+
+        Ok(())
     }
 }

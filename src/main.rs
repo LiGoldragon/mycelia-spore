@@ -16,11 +16,14 @@ async fn main() -> Result<()> {
     for item in configs {
         let config = item.context("failed to decode spore")?;
         config
-            .hosting
+            .hosting_designation
             .apply(&config)
             .await
-            .context("failed to apply hosting")?;
-        println!("Mycelia Spore: hosting updated for site {}", config.site.id);
+            .context("failed to apply hosting designation")?;
+        println!(
+            "Mycelia Spore: processed configuration for {}",
+            config.site_identity.canonical_id
+        );
     }
     Ok(())
 }
